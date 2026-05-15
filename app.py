@@ -1,4 +1,5 @@
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import streamlit as st
@@ -13,10 +14,19 @@ MARKET_SESSIONS = {
         (time(13, 0), time(15, 0)),
     ],
 }
+APP_TIMEZONE = ZoneInfo("Asia/Shanghai")
+
+
+def china_now() -> datetime:
+    return datetime.now(APP_TIMEZONE)
+
+
+def trading_date():
+    return china_now().date()
 
 
 def combine_today(t: time) -> datetime:
-    return datetime.combine(date.today(), t)
+    return datetime.combine(trading_date(), t)
 
 
 def market_close_time(market: str) -> time:
@@ -104,7 +114,7 @@ def calculate_current_progress(order_time: time, end_time: time, quantity: int, 
     if total_minutes == 0:
         return None
 
-    now_dt = datetime.now().replace(second=0, microsecond=0)
+    now_dt = china_now().replace(tzinfo=None, second=0, microsecond=0)
     elapsed_minutes = sum(1 for minute in minutes if minute < now_dt)
     elapsed_minutes = min(max(elapsed_minutes, 0), total_minutes)
     pct = elapsed_minutes / total_minutes
@@ -125,7 +135,8 @@ st.set_page_config(page_title="交易进度跟踪", page_icon="📈", layout="wi
 st.title("交易进度跟踪")
 st.caption(
     "按所选市场的连续交易时段线性分配交易进度。"
-    "港股: 09:30–12:00，13:00–16:00；A股: 09:30–11:30，13:00–15:00。午休时间不计入可交易时间。"
+    "港股: 09:30–12:00，13:00–16:00；A股: 09:30–11:30，13:00–15:00。"
+    "午休时间不计入可交易时间。当前时间按北京时间显示。"
 )
 
 if "orders" not in st.session_state:
@@ -177,8 +188,8 @@ for order in orders:
 if not orders:
     st.info("请先在左侧栏添加订单，添加后会显示对应的交易进度表。")
 else:
-    now_display = datetime.now().strftime("%H:%M")
-    st.markdown(f"**订单总览（当前时间 {now_display}）**")
+    now_display = china_now().strftime("%H:%M")
+    st.markdown(f"**订单总览（北京时间 {now_display}）**")
     st.button("刷新当前时间", type="secondary")
 
     overview_rows = []
